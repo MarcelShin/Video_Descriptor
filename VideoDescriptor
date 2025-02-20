@@ -1,0 +1,78 @@
+from pytube import YouTube
+
+def baixar_audio(url_video, nome_arquivo='audio.mp4'):
+    video = YouTube(url_video)
+    stream = video.streams.filter(only_audio=True).first()
+    stream.download(filename=nome_arquivo)
+    print(f'Áudio baixado como {nome_arquivo}')
+
+import speech_recognition as sr
+from pydub import AudioSegment
+
+def transcrever_audio(nome_arquivo):
+    # Converte o áudio para o formato WAV (necessário para o SpeechRecognition)
+    audio = AudioSegment.from_file(nome_arquivo)
+    audio.export("audio.wav", format="wav")
+    
+    # Usando a biblioteca SpeechRecognition para transcrever
+    recognizer = sr.Recognizer()
+    with sr.AudioFile('audio.wav') as source:
+        audio = recognizer.record(source)
+    
+    try:
+        texto = recognizer.recognize_google(audio, language='pt-BR')
+        print("Transcrição concluída.")
+        return texto
+    except sr.UnknownValueError:
+        print("Erro: O áudio não pôde ser transcrito.")
+        return ""
+    except sr.RequestError as e:
+        print(f"Erro na requisição: {e}")
+        return ""
+
+
+import openai
+
+# Defina sua chave de API aqui
+openai.api_key = 'sua-chave-da-api-aqui'
+
+def resumir_texto(texto):
+    try:
+        response = openai.Completion.create(
+            model="text-davinci-003",  # ou qualquer outro modelo de sua escolha
+            prompt=f"Resuma o seguinte texto:\n{texto}",
+            max_tokens=200  # Limite de tokens para o resumo
+        )
+        resumo = response.choices[0].text.strip()
+        return resumo
+    except Exception as e:
+        print(f"Erro ao resumir o texto: {e}")
+        return ""
+
+
+def main():
+    url_video = input("Digite a URL do vídeo do YouTube: ")
+    
+    # Passo 1: Baixar o áudio
+    nome_arquivo = 'audio.mp4'
+    baixar_audio(url_video, nome_arquivo)
+    
+    # Passo 2: Transcrever o áudio
+    texto_transcrito = transcrever_audio(nome_arquivo)
+    if texto_transcrito:
+        print("Texto transcrito:")
+        print(texto_transcrito)
+    
+        # Passo 3: Resumir o texto
+        resumo = resumir_texto(texto_transcrito)
+        if resumo:
+            print("\nResumo gerado:")
+            print(resumo)
+        else:
+            print("Não foi possível gerar o resumo.")
+    else:
+        print("Não foi possível transcrever o áudio.")
+
+if __name__ == "__main__":
+    main()
+
